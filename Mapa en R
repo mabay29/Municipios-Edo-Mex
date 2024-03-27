@@ -1,0 +1,70 @@
+library(leaflet)
+library(sp)
+library(sf)#sf libreria para leer los objetos espaciales
+library(ggplot2)
+library(dplyr)
+library(leafem)
+choose.files(
+edomex = st_read("C:\\Users\\hp pc\\Downloads\\Shape_mapa Final\\Edomex_32614.shp")#st_read para leer archivos y cargarlos
+uso_suelo=st_read("C:\\Users\\hp pc\\Downloads\\Shape_mapa Final\\uso_suelo.shp")
+clima=st_read("C:\\Users\\hp pc\\Downloads\\Shape_mapa Final\\GeoJSON - Temperatura máxima.json")
+vias_comunica=st_read( "C:\\Users\\hp pc\\Downloads\\Shape_mapa Final\\Vias_comunicación.shp")
+local_rural= st_read("C:\\Users\\hp pc\\Downloads\\Shape_mapa Final\\loc_r.shp" )
+agricultura_r=st_read("C:\\Users\\hp pc\\Downloads\\Shape_mapa Final\\Agricultura_Riego Edomex.shp")
+agricultura_t=st_read("C:\\Users\\hp pc\\Downloads\\Shape_mapa Final\\Agricultura_Temporal Edomex.shp")
+mun1=st_read("C:\\Users\\hp pc\\Downloads\\Shape_mapa Final\\02_Municipios Edomex 2010.shp")
+kml=st_read("C:\\Users\\hp pc\\Downloads\\Shape_mapa Final\\EMéxico.kml")
+estaciones=st_read("C:\\Users\\hp pc\\Downloads\\Shape_mapa Final\\estaciones_Edomex_3214.shp")
+  #convertimos todo a un sistema de cordenadas
+mun1=st_transform(mun1,4326)
+agricultura_t=st_transform(agricultura_t,4326)
+vias_comunica=st_transform(vias_comunica,4326)
+agricultura_r=st_transform(agricultura_r,4326)
+uso_suelo=st_transform(uso_suelo,4326)
+local_rural=st_transform(local_rural,4326)
+edomex=st_transform(edomex,4326)
+#cargar mapa
+leaflet()%>%addPolygons(data=edomex)%>%addCircles(data=local_rural)
+leaflet()%>%addPolygons(data=edomex)%>%addCircles(data = local_rural)%>%addPolylines(data = vias_comunica)
+#obtengo la caja de mi entidad edomex
+#configurar la vista de entidades
+#ajustar la vista a un elementro setview
+caja=st_bbox(edomex)%>%as.vector()
+
+leaflet()%>%addPolygons(data=edomex)%>%
+  addCircles(data=local_rural)%>%
+  addPolylines(data = vias_comunica)%>%
+  fitBounds(lng1 = caja[1],lat1 = caja[2],lng2 = caja[3],lat2 = caja[4])
+#para ver el peso de las capas es necesario simplificar
+object.size(edomex)
+object.size(vias_comunica)
+#simplificamos
+edomex=st_simplify(edomex,dTolerance = 100)
+vias_comunica=st_simplify(vias_comunica,dTolerance = 100)
+leaflet()%>%addTiles()%>%addPolygons(data = edomex)%>%
+  addCircles(data = local_rural)%>%
+  addPolylines(data=vias_comunica)%>%
+  fitBounds(lng1 = caja[1],lat1 = caja[2],lng2 = caja[3],lat2 = caja[4])
+#configurar con colores
+#agregamos logo buscamos en internet abrir pestaña copiamos link
+logo="https://upload.wikimedia.org/wikipedia/commons/1/1a/Logo_de_la_UAEMex.svg"
+
+pal = colorNumeric("Royal2",mun1$Area)
+leaflet()%>%addTiles()%>%addPolygons(data = mun1,fillColor = ~pal(Area),fillOpacity = 0.8,label = mun1$NOM_MUN,
+                                     color = "white",weight = 1.5,highlightOptions = highlightOptions(fillColor = "#70CAC9"),group = "Municipios")%>%
+  addCircles(data = local_rural,group = "Localidades")%>%
+  addPolylines(data=vias_comunica,weight = 1.0,group = "Vias de comunicacion")%>%
+  addCircleMarkers(data=local_rural,radius = 5,weight = 1,fillColor = "red",
+                   color = "white",label = local_rural$NOM_LOC,group = "localidades")%>%
+  fitBounds(lng1 = caja[1],lat1 = caja[2],lng2 = caja[3],lat2 = caja[4])%>%
+#agregamos layer control y leyenda
+  addLegend(position = "bottomright",pal = pal,values = mun1$Area,
+            title = "Area en km")%>%
+#agregamos layer control
+  addLegend(position = "bottomleft",colors = "red",labels = "Localidades")%>%
+  #agregamos layer overlay groups para quie aparezca todas las capas 
+  addLayersControl(overlayGroups = c("Localidades","Vias de comunicacion","Municipios"),
+                   position = "topright", options= layersControlOptions(collapsed = FALSE))%>%
+#agregamos al mapa el logo
+  addLogo(img = logo, src="remote",width = 150,position = "topleft")
+
